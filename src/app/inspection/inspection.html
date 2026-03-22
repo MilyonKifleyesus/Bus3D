@@ -1,0 +1,732 @@
+<!-- Loading Overlay -->
+@if (isLoading()) {
+  <div class="fixed inset-0 z-[100] bg-[#071422] flex flex-col items-center justify-center transition-opacity duration-500" [class.opacity-0]="!isLoading()">
+    <div class="w-96 flex flex-col items-center">
+      <!-- Animated Bus Icon -->
+      <div class="mb-12 relative">
+        <div class="text-[#00CFFF] animate-bounce">
+          <mat-icon class="!w-24 !h-24 !text-[96px]">directions_bus</mat-icon>
+        </div>
+        <div class="absolute -bottom-4 left-1/2 -translate-x-1/2 w-32 h-2 bg-black/40 blur-md rounded-full animate-pulse"></div>
+      </div>
+
+      <h2 class="text-2xl font-black text-white uppercase tracking-[0.2em] mb-2">Initializing Bay</h2>
+      <p class="text-slate-400 text-xs uppercase tracking-widest mb-8 font-bold">Loading 3D Assets & Inspection Data</p>
+      
+      <!-- Progress Bar -->
+      <div class="w-full h-1.5 bg-white/5 rounded-full overflow-hidden border border-white/10 p-[1px]">
+        <div 
+          class="h-full bg-gradient-to-r from-[#0055CC] to-[#00CFFF] rounded-full transition-all duration-300 shadow-[0_0_15px_rgba(0,207,255,0.5)]"
+          [style.width.%]="loadingProgress()"
+        ></div>
+      </div>
+      
+      <div class="flex justify-between w-full mt-3">
+        <span class="text-[10px] text-slate-500 font-black uppercase tracking-tighter">System Check: OK</span>
+        <span class="text-[10px] text-[#00CFFF] font-black uppercase tracking-tighter">{{ loadingProgress() | number:'1.0-0' }}%</span>
+      </div>
+    </div>
+    
+    <!-- Decorative Grid -->
+    <div class="absolute inset-0 pointer-events-none opacity-10" style="background-image: radial-gradient(#00CFFF 1px, transparent 1px); background-size: 30px 30px;"></div>
+  </div>
+}
+
+<div [class]="'flex flex-col h-screen bg-[#071422] font-sans text-slate-100 overflow-hidden transition-all duration-1000 ' + (isIntroActive() ? 'opacity-90' : 'opacity-100')">
+  <!-- Header: Enterprise Summary -->
+  <header [class]="'bg-[#071422] border-b-2 border-[#00CFFF] px-4 py-3 flex flex-col gap-4 shadow-2xl z-20 transition-all duration-700 sm:px-6 lg:flex-row lg:items-center lg:justify-between ' + (isIntroActive() ? 'intro-hidden' : 'intro-visible')">
+    <div class="flex items-start gap-3 sm:items-center sm:gap-5">
+      <div class="bg-[#0055CC] p-2.5 rounded-xl text-white shadow-lg shadow-blue-900/20">
+        <mat-icon>analytics</mat-icon>
+      </div>
+      <div class="min-w-0 flex-1">
+        <div class="flex flex-wrap items-center gap-2">
+          <h1 class="text-lg font-black tracking-tight text-white uppercase sm:text-xl">
+            {{ inspectionService.vehicle()?.fleetNumber || 'Loading...' }}
+          </h1>
+          <span class="px-2 py-0.5 bg-[#CC6600] text-white text-[10px] font-bold rounded uppercase tracking-wider">
+            {{ inspectionService.vehicle()?.status }}
+          </span>
+        </div>
+        <div class="mt-2 flex flex-wrap gap-2 text-[10px] text-slate-400 uppercase tracking-widest font-bold">
+          <span class="bg-[#1A2E45] px-2 py-0.5 rounded">VIN: {{ inspectionService.vehicle()?.vin }}</span>
+          <span class="bg-[#1A2E45] px-2 py-0.5 rounded">Client: {{ inspectionService.vehicle()?.client }}</span>
+          <span class="bg-[#1A2E45] px-2 py-0.5 rounded">Project: {{ inspectionService.vehicle()?.project }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Top Summary Stats -->
+    <div class="flex w-full flex-col gap-4 lg:w-auto lg:flex-row lg:items-center lg:gap-8">
+      <div class="flex flex-wrap justify-between gap-4 sm:justify-start sm:gap-6">
+        <div class="flex flex-col items-center">
+          <span class="text-[10px] text-slate-400 font-bold uppercase tracking-tighter mb-0.5">Tickets</span>
+          <span class="text-lg font-black text-white leading-none">{{ ticketCount() }}</span>
+        </div>
+        <div class="flex flex-col items-center">
+          <span class="text-[10px] text-slate-400 font-bold uppercase tracking-tighter mb-0.5">Snags</span>
+          <span class="text-lg font-black text-white leading-none">{{ snagCount() }}</span>
+        </div>
+        <div class="flex flex-col items-center">
+          <span class="text-[10px] text-red-400 font-bold uppercase tracking-tighter mb-0.5">Critical</span>
+          <span class="text-lg font-black text-red-500 leading-none">{{ criticalCount() }}</span>
+        </div>
+        <div class="flex flex-col items-center">
+          <span class="text-[10px] text-amber-400 font-bold uppercase tracking-tighter mb-0.5">Warnings</span>
+          <span class="text-lg font-black text-amber-500 leading-none">{{ warningCount() }}</span>
+        </div>
+      </div>
+
+      <div class="hidden h-10 w-px bg-white/10 mx-2 lg:block"></div>
+
+      <div class="flex flex-wrap items-center justify-between gap-4 lg:flex-nowrap">
+        <div class="flex flex-col">
+          <span class="text-[10px] text-slate-400 uppercase font-bold tracking-widest">Inspection Progress</span>
+          <div class="flex items-center gap-2 mt-1">
+            <div class="h-2 w-24 rounded-full bg-[#1A2E45] overflow-hidden sm:w-32">
+              <div class="h-full bg-[#00CFFF] transition-all duration-500 shadow-[0_0_10px_#00CFFF]" [style.width.%]="summaryStats().progress"></div>
+            </div>
+            <span class="text-xs font-black text-[#00CFFF]">{{ summaryStats().progress }}%</span>
+          </div>
+        </div>
+        <div class="flex items-center gap-3 border-white/10 lg:border-l lg:pl-4">
+          <div class="text-left lg:text-right">
+            <div class="text-[10px] text-slate-400 uppercase font-bold tracking-widest">Inspector</div>
+            <div class="font-bold text-sm text-white">M. Kifleyesus</div>
+          </div>
+          <div class="w-10 h-10 rounded-full bg-[#1A2E45] border-2 border-white/10 shadow-sm flex items-center justify-center text-slate-400">
+            <mat-icon>account_circle</mat-icon>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="relative flex flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
+    
+    <!-- Cinematic Intro Overlay -->
+    @if (isIntroActive()) {
+      <div class="fixed inset-0 z-[200] bg-[#071422] flex flex-col items-center justify-center p-12 transition-opacity duration-1000">
+        <div class="w-full max-w-2xl space-y-12 text-center">
+          <div class="space-y-4">
+            <h1 class="text-6xl font-black text-white uppercase tracking-tighter italic">
+              <span class="text-[#00CFFF]">YRT</span> INSPECTION
+            </h1>
+            <p class="text-slate-400 font-black uppercase tracking-[0.4em] text-xs">Station 04 &bull; Final PDI Bay</p>
+          </div>
+          
+          <div class="space-y-4">
+            <div class="flex justify-between text-[10px] font-black uppercase tracking-widest text-slate-500">
+              <span>Initializing 3D Environment</span>
+              <span>62%</span>
+            </div>
+            <div class="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+              <div class="h-full bg-[#00CFFF] progress-fill" style="width: 62%"></div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-3 gap-8 pt-12">
+            <div class="space-y-2">
+              <div class="text-[10px] font-black text-slate-500 uppercase">Vehicle ID</div>
+              <div class="text-white font-bold">#2838</div>
+            </div>
+            <div class="space-y-2">
+              <div class="text-[10px] font-black text-slate-500 uppercase">Fleet</div>
+              <div class="text-white font-bold">Sky Blue</div>
+            </div>
+            <div class="space-y-2">
+              <div class="text-[10px] font-black text-slate-500 uppercase">Status</div>
+              <div class="text-[#00CFFF] font-bold status-blink">INCOMING</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Loading Overlay -->
+    @if (inspectionService.loading()) {
+      <div class="absolute inset-0 bg-[#071422]/90 z-50 flex flex-col items-center justify-center">
+        <mat-spinner diameter="40" strokeWidth="4"></mat-spinner>
+        <p class="mt-4 text-[#00CFFF] font-bold text-xs uppercase tracking-widest animate-pulse">Synchronizing Fleet Data...</p>
+      </div>
+    }
+
+    <!-- Left Sidebar: Inspection Zones & Timeline -->
+    <aside [class]="'w-full max-h-[38vh] flex flex-col bg-[#0D1B2A] border-b border-white/10 z-10 transition-all duration-700 lg:max-h-none lg:w-[320px] lg:flex-shrink-0 lg:border-b-0 lg:border-r ' + (isIntroActive() ? 'intro-hidden' : 'intro-visible panel-slide-left')">
+      <div class="p-6 border-b border-white/10">
+        <div class="flex bg-black/20 p-1 rounded-xl mb-6">
+          <button 
+            (click)="sidebarTab.set('zones')"
+            [class]="'flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ' + (sidebarTab() === 'zones' ? 'bg-[#00CFFF] text-[#071422] shadow-lg' : 'text-slate-400 hover:text-white')"
+          >Zones</button>
+          <button 
+            (click)="sidebarTab.set('timeline')"
+            [class]="'flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ' + (sidebarTab() === 'timeline' ? 'bg-[#00CFFF] text-[#071422] shadow-lg' : 'text-slate-400 hover:text-white')"
+          >Timeline</button>
+        </div>
+
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-[11px] font-black text-white uppercase tracking-[0.2em]">
+            {{ sidebarTab() === 'zones' ? 'Inspection Zones' : 'Activity Log' }}
+          </h2>
+          <span class="px-2 py-0.5 rounded-full bg-white/5 text-[9px] font-black text-slate-400 uppercase">
+            {{ sidebarTab() === 'zones' ? hotspots().length : timeline().length }}
+          </span>
+        </div>
+        
+        @if (sidebarTab() === 'zones') {
+          <div class="relative">
+            <mat-icon class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">search</mat-icon>
+            <input type="text" placeholder="Filter zones..." class="w-full bg-black/20 border border-white/10 rounded-xl py-2 pl-9 pr-4 text-[10px] text-white focus:border-[#00CFFF] focus:outline-none placeholder:text-slate-600 uppercase font-black tracking-widest">
+          </div>
+        }
+      </div>
+
+      <div class="flex-1 overflow-y-auto p-4 custom-scrollbar">
+        @if (sidebarTab() === 'zones') {
+          <div class="space-y-2">
+            @for (status of hotspots(); track status.id; let i = $index) {
+              <button 
+                (click)="selectHotspot(status.id)"
+                [class.bg-[#1E3A5F]]="selectedHotspotId() === status.id"
+                [class.bg-[#112233]]="selectedHotspotId() !== status.id && i % 2 === 1"
+                [class.bg-transparent]="selectedHotspotId() !== status.id && i % 2 === 0"
+                class="w-full flex items-center justify-between p-4 rounded-lg border border-transparent hover:bg-white/5 transition-all text-left group"
+              >
+                <div class="flex items-center gap-3">
+                  <div [class]="'w-2.5 h-2.5 rounded-full ' + getZoneStatusColor(status.status)"></div>
+                  <div class="flex flex-col">
+                    <span class="font-bold text-xs tracking-tight text-white">{{ status.label }}</span>
+                    <span class="text-[8px] uppercase tracking-widest font-black text-slate-400">{{ getZoneStatusLabel(status.status) }}</span>
+                  </div>
+                </div>
+                <div class="flex gap-1.5">
+                  @if (status.ticketCount > 0) {
+                    <span class="text-[9px] bg-[#CC0000] text-white px-1.5 py-0.5 rounded-md font-black">{{ status.ticketCount }}</span>
+                  }
+                  @if (status.snagCount > 0) {
+                    <span class="text-[9px] bg-[#E07800] text-white px-1.5 py-0.5 rounded-md font-black">{{ status.snagCount }}</span>
+                  }
+                </div>
+              </button>
+            }
+          </div>
+        } @else {
+          <div class="space-y-6 p-2">
+            @for (event of timeline(); track event.id; let last = $last) {
+              <div class="relative flex gap-4">
+                @if (!last) {
+                  <div class="absolute left-[11px] top-6 bottom-0 w-px bg-white/5"></div>
+                }
+                <div class="relative z-10 w-6 h-6 rounded-full bg-[#0D1B2A] border-2 border-white/10 flex items-center justify-center">
+                  <div [class]="'w-2 h-2 rounded-full ' + (event.type === 'ticket' ? 'bg-red-500' : event.type === 'snag' ? 'bg-amber-500' : 'bg-emerald-500')"></div>
+                </div>
+                <div class="flex-1 pb-6">
+                  <div class="flex items-center justify-between mb-1">
+                    <span class="text-[9px] font-black text-slate-500 uppercase tracking-widest">{{ event.timestamp | date:'HH:mm' }}</span>
+                    <span class="text-[8px] font-black text-slate-600 uppercase">{{ event.userName }}</span>
+                  </div>
+                  <div class="bg-white/5 rounded-xl p-3 border border-white/5">
+                    <div class="text-[10px] font-bold text-white mb-1">{{ event.title }}</div>
+                    <div class="text-[9px] text-slate-400 leading-relaxed">{{ event.description }}</div>
+                  </div>
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </div>
+
+      <div class="mt-auto p-5 border-t border-white/5">
+        <div class="bg-black/20 p-4 rounded-2xl border border-white/10">
+          <h3 class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">Severity Legend</h3>
+          <div class="flex flex-col gap-2.5 text-[10px] font-bold uppercase tracking-tight text-slate-400">
+            <div class="flex items-center gap-2.5"><span class="w-2 h-2 rounded-full bg-[#FF2222]"></span> Critical Issue</div>
+            <div class="flex items-center gap-2.5"><span class="w-2 h-2 rounded-full bg-[#FFA500]"></span> Warning / Recheck</div>
+            <div class="flex items-center gap-2.5"><span class="w-2 h-2 rounded-full bg-[#888888]"></span> Clear / Passed</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Center: 3D Viewport -->
+    <div class="relative min-h-[44vh] min-w-0 flex-1 bg-[#071422] overflow-hidden lg:min-h-0">
+      @if (!is3dFailed()) {
+        <div #canvasContainer class="w-full h-full cursor-move"></div>
+        
+        <!-- Hover Tooltip -->
+        @if (hoveredHotspot()) {
+          <div 
+            class="absolute z-50 pointer-events-none bg-[#0D1B2A]/95 backdrop-blur-xl border border-[#00CFFF]/30 rounded-2xl p-5 shadow-2xl transition-all duration-200 w-72"
+            [style.left.px]="mousePosition().x - (canvasContainer.getBoundingClientRect().left) + 20"
+            [style.top.px]="mousePosition().y - (canvasContainer.getBoundingClientRect().top) - 140"
+          >
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center gap-3">
+                <div class="w-2 h-2 rounded-full bg-[#00CFFF] animate-pulse"></div>
+                <span class="text-[11px] font-black text-white uppercase tracking-widest">{{ hoveredHotspot()?.label }}</span>
+              </div>
+              <span [class]="'px-2 py-0.5 rounded text-[8px] font-black uppercase ' + getZoneStatusColor(hoveredHotspot()?.status || '') + ' text-white'">
+                {{ getZoneStatusLabel(hoveredHotspot()?.status || '') }}
+              </span>
+            </div>
+
+            <div class="space-y-3">
+              <div class="flex items-center justify-between">
+                <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Images Inspected</span>
+                <span class="text-[9px] font-black text-[#00CFFF] uppercase tracking-widest">5 Total</span>
+              </div>
+              
+              <div class="grid grid-cols-3 gap-2">
+                <div class="aspect-square bg-black/40 rounded-lg border border-white/5 overflow-hidden group/img">
+                  <img [src]="'https://picsum.photos/seed/' + hoveredHotspot()?.id + '1/200/200'" alt="Inspection Preview 1" class="w-full h-full object-cover opacity-70 group-hover/img:opacity-100 transition-opacity" referrerpolicy="no-referrer">
+                </div>
+                <div class="aspect-square bg-black/40 rounded-lg border border-white/5 overflow-hidden group/img">
+                  <img [src]="'https://picsum.photos/seed/' + hoveredHotspot()?.id + '2/200/200'" alt="Inspection Preview 2" class="w-full h-full object-cover opacity-70 group-hover/img:opacity-100 transition-opacity" referrerpolicy="no-referrer">
+                </div>
+                <div class="aspect-square bg-black/40 rounded-lg border border-white/5 overflow-hidden flex flex-col items-center justify-center text-slate-500 bg-white/5">
+                  <span class="text-[10px] font-black text-white">+3</span>
+                  <mat-icon class="text-[10px] w-auto h-auto">collections</mat-icon>
+                </div>
+              </div>
+
+              <div class="pt-2 border-t border-white/5 flex items-center justify-between">
+                <div class="flex gap-2">
+                  <div class="flex flex-col">
+                    <span class="text-[7px] font-black text-slate-500 uppercase">Tickets</span>
+                    <span class="text-[9px] font-black text-red-500">{{ hoveredHotspot()?.ticketCount || 0 }}</span>
+                  </div>
+                  <div class="flex flex-col">
+                    <span class="text-[7px] font-black text-slate-500 uppercase">Snags</span>
+                    <span class="text-[9px] font-black text-amber-500">{{ hoveredHotspot()?.snagCount || 0 }}</span>
+                  </div>
+                </div>
+                <div class="flex items-center gap-1 text-[#00CFFF]">
+                  <span class="text-[8px] font-black uppercase tracking-tighter">Click to Inspect</span>
+                  <mat-icon class="text-[10px] w-auto h-auto">chevron_right</mat-icon>
+                </div>
+              </div>
+            </div>
+          </div>
+        }
+      } @else {
+        <!-- 2D Fallback -->
+        <div class="w-full h-full flex items-center justify-center p-12">
+          <div class="relative max-w-4xl w-full aspect-[16/9] bg-[#0D1B2A] rounded-3xl shadow-2xl border border-white/10 overflow-hidden flex items-center justify-center">
+            <img [src]="inspectionService.vehicle()?.imageUrl" alt="Bus 2D View" class="max-h-full object-contain opacity-40">
+            <div class="absolute inset-0 flex items-center justify-center">
+              <div class="grid grid-cols-4 gap-4 p-8">
+                @for (status of inspectionService.hotspotStatuses(); track status.id) {
+                  <button 
+                    (click)="selectHotspot(status.id)"
+                    class="flex flex-col items-center gap-2 p-4 rounded-2xl bg-[#1A2E45]/90 backdrop-blur-md border border-white/10 shadow-sm hover:shadow-md transition-all"
+                  >
+                    <div [class]="'w-3 h-3 rounded-full ' + getZoneStatusColor(status.status)"></div>
+                    <span class="text-[9px] font-black uppercase tracking-wider text-white">{{ status.label }}</span>
+                  </button>
+                }
+              </div>
+            </div>
+            <div class="absolute top-6 right-6 bg-[#FFA500] text-white px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest shadow-lg">
+              3D Engine Offline - 2D Fallback
+            </div>
+          </div>
+        </div>
+      }
+      
+      <!-- Camera Presets: Compact & Professional -->
+      <div class="absolute bottom-4 left-1/2 flex max-w-[calc(100%-1.5rem)] -translate-x-1/2 gap-1 overflow-x-auto rounded-2xl border border-white/10 bg-[#0D1B2A]/90 p-1.5 shadow-2xl backdrop-blur-xl lg:bottom-8">
+        <button (click)="setCamera('front')" class="p-2.5 hover:bg-white/10 rounded-xl transition-colors flex flex-col items-center gap-1 text-white/60 hover:text-white">
+          <mat-icon class="text-lg">north</mat-icon>
+          <span class="text-[8px] font-black uppercase tracking-tighter">Front</span>
+        </button>
+        <button (click)="setCamera('rear')" class="p-2.5 hover:bg-white/10 rounded-xl transition-colors flex flex-col items-center gap-1 text-white/60 hover:text-white">
+          <mat-icon class="text-lg">south</mat-icon>
+          <span class="text-[8px] font-black uppercase tracking-tighter">Rear</span>
+        </button>
+        <button (click)="setCamera('left')" class="p-2.5 hover:bg-white/10 rounded-xl transition-colors flex flex-col items-center gap-1 text-white/60 hover:text-white">
+          <mat-icon class="text-lg">west</mat-icon>
+          <span class="text-[8px] font-black uppercase tracking-tighter">Left</span>
+        </button>
+        <button (click)="setCamera('right')" class="p-2.5 hover:bg-white/10 rounded-xl transition-colors flex flex-col items-center gap-1 text-white/60 hover:text-white">
+          <mat-icon class="text-lg">east</mat-icon>
+          <span class="text-[8px] font-black uppercase tracking-tighter">Right</span>
+        </button>
+        <button (click)="setCamera('top')" class="p-2.5 hover:bg-white/10 rounded-xl transition-colors flex flex-col items-center gap-1 text-white/60 hover:text-white">
+          <mat-icon class="text-lg">layers</mat-icon>
+          <span class="text-[8px] font-black uppercase tracking-tighter">Roof</span>
+        </button>
+        <button (click)="setCamera('interior')" class="p-2.5 hover:bg-white/10 rounded-xl transition-colors flex flex-col items-center gap-1 text-white/60 hover:text-white">
+          <mat-icon class="text-lg">sensor_door</mat-icon>
+          <span class="text-[8px] font-black uppercase tracking-tighter">Interior</span>
+        </button>
+        <div class="w-px h-8 bg-white/10 mx-1.5 self-center"></div>
+        <button (click)="toggleNightMode()" class="p-2.5 hover:bg-white/10 rounded-xl transition-colors flex flex-col items-center gap-1" [class.text-amber-400]="isNightMode()" [class.text-white/60]="!isNightMode()">
+          <mat-icon class="text-lg">{{ isNightMode() ? 'light_mode' : 'dark_mode' }}</mat-icon>
+          <span class="text-[8px] font-black uppercase tracking-tighter">{{ isNightMode() ? 'Day' : 'Night' }}</span>
+        </button>
+      </div>
+
+      <!-- Viewport Overlay Info -->
+      <div class="pointer-events-none absolute left-4 top-4 lg:left-8 lg:top-8">
+        <div class="bg-[#0D1B2A]/80 backdrop-blur-md px-4 py-2 rounded-xl text-[9px] font-black text-[#00CFFF] uppercase tracking-[0.2em] border border-white/10 shadow-sm flex items-center gap-2">
+          <div class="w-1.5 h-1.5 rounded-full bg-[#00CC66] animate-pulse"></div>
+          Live Inspection Viewport
+        </div>
+      </div>
+
+      <!-- Scanning Line Effect -->
+      <div class="absolute inset-0 pointer-events-none overflow-hidden">
+        <div class="w-full h-[2px] bg-[#00CFFF]/10 shadow-[0_0_15px_#00CFFF] absolute top-0 animate-scan"></div>
+      </div>
+
+      <!-- Save/Complete Actions -->
+      <div class="absolute right-4 top-4 flex flex-col gap-2 sm:flex-row lg:right-8 lg:top-8">
+        <button (click)="saveDraft()" class="bg-[#1E3A5F] text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border border-white/10 shadow-sm hover:bg-[#2A4A6F] transition-all">
+          Save Draft
+        </button>
+        <button (click)="markComplete()" class="bg-[#006633] text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg hover:bg-[#007744] transition-all">
+          Mark Complete
+        </button>
+      </div>
+    </div>
+
+    <!-- Right Sidebar: Inspection Details -->
+    <aside [class]="'w-full bg-[#0D1B2A] border-t border-white/5 border-r-4 border-r-[#00CFFF] flex flex-col shadow-2xl z-20 transition-all duration-700 lg:w-[420px] lg:flex-shrink-0 lg:border-l lg:border-t-0 ' + (isIntroActive() ? 'intro-hidden' : 'intro-visible panel-slide-right')">
+      @if (selectedHotspotId()) {
+        <!-- Zone Header -->
+        <div class="bg-[#0A3D6B] p-4 border-b border-white/5 sm:p-6">
+          <div class="flex items-center justify-between mb-3">
+            <div>
+              <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Selected Component</span>
+              <h2 class="text-2xl font-black tracking-tight text-white">{{ selectedHotspotConfig()?.label }}</h2>
+            </div>
+            <button (click)="selectedHotspotId.set(null)" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/5 text-slate-400 transition-colors">
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+          
+          <div class="mb-4 flex flex-col gap-2 sm:flex-row">
+            <button (click)="raiseTicket()" class="flex-1 bg-[#CC0000] text-white py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-red-700 transition-all shadow-lg flex items-center justify-center gap-2">
+              <mat-icon class="text-sm">add_circle</mat-icon>
+              Raise Ticket
+            </button>
+            <button (click)="markClear()" class="flex-1 bg-[#1A2E45] text-white border border-white/10 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-[#2A4A6F] transition-all flex items-center justify-center gap-2">
+              <mat-icon class="text-sm">verified</mat-icon>
+              Mark Clear
+            </button>
+          </div>
+
+          <div class="flex items-center gap-4">
+            <div class="flex-1">
+              <div class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Zone Status</div>
+              <div class="flex gap-1">
+                @for (status of zoneStatuses; track status) {
+                  <button 
+                    (click)="updateZoneStatus(status)"
+                    [class]="'flex-1 h-1.5 rounded-full transition-all ' + (selectedHotspotData()?.status === status ? getZoneStatusColor(status) : 'bg-white/10')"
+                    [title]="getZoneStatusLabel(status)"
+                  ></button>
+                }
+              </div>
+            </div>
+            <div class="text-right">
+              <span class="text-[10px] font-black text-white uppercase">{{ getZoneStatusLabel(selectedHotspotData()?.status || '') }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-4 space-y-8 sm:p-6">
+          <!-- Quick Actions -->
+          <div class="grid grid-cols-2 gap-3">
+            <button (click)="addSnag()" class="flex items-center gap-3 p-3 rounded-2xl border border-white/5 bg-white/5 hover:bg-white/10 transition-all">
+              <div class="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center text-white">
+                <mat-icon class="text-sm">note_add</mat-icon>
+              </div>
+              <span class="text-[10px] font-black uppercase tracking-widest text-slate-300">Add Snag</span>
+            </button>
+            <button (click)="uploadPhoto()" class="flex items-center gap-3 p-3 rounded-2xl border border-white/5 bg-white/5 hover:bg-white/10 transition-all">
+              <div class="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center text-white">
+                <mat-icon class="text-sm">add_a_photo</mat-icon>
+              </div>
+              <span class="text-[10px] font-black uppercase tracking-widest text-slate-300">Add Photo</span>
+            </button>
+          </div>
+
+          <!-- Checklist Section -->
+          <section>
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Zone Checklist</h3>
+              <span class="text-[10px] font-black text-[#00CFFF]">{{ selectedHotspotData()?.progress | number:'1.0-0' }}%</span>
+            </div>
+            <div class="space-y-2">
+              @for (item of selectedHotspotChecklist(); track item.id) {
+                <button 
+                  (click)="toggleChecklistItem(item.id)"
+                  class="w-full flex items-center gap-3 p-3.5 rounded-2xl border transition-all text-left"
+                  [class.bg-white/5]="item.completed"
+                  [class.border-white/5]="!item.completed"
+                  [class.border-[#00CFFF]/20]="item.completed"
+                >
+                  <div class="w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all"
+                    [class.bg-[#00CFFF]]="item.completed"
+                    [class.border-[#00CFFF]]="item.completed"
+                    [class.border-white/20]="!item.completed"
+                  >
+                    @if (item.completed) {
+                      <mat-icon class="text-[#071422] text-xs w-auto h-auto">check</mat-icon>
+                    }
+                  </div>
+                  <span class="text-xs font-bold" [class.text-slate-500]="item.completed" [class.line-through]="item.completed" [class.text-white]="!item.completed">
+                    {{ item.label }}
+                  </span>
+                </button>
+              }
+            </div>
+          </section>
+
+          <!-- Door Control Section (Conditional) -->
+          @if (isDoorHotspot()) {
+            <section class="bg-slate-900 p-6 rounded-3xl text-white shadow-xl shadow-slate-200">
+              <div class="flex items-center gap-3 mb-5">
+                <div class="bg-white/10 p-2 rounded-xl">
+                  <mat-icon class="text-white">settings_remote</mat-icon>
+                </div>
+                <div>
+                  <h3 class="text-xs font-black uppercase tracking-widest">Door Interface</h3>
+                  <p class="text-[9px] text-white/40 font-bold uppercase tracking-widest">Pneumatic System Control</p>
+                </div>
+              </div>
+
+              <div class="space-y-4">
+                <!-- Status Row -->
+                <div class="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/10">
+                  <div class="flex flex-col">
+                    <span class="text-[9px] text-white/40 font-black uppercase mb-1">State</span>
+                    <div class="flex items-center gap-2">
+                      <span [class]="'w-2 h-2 rounded-full ' + (getDoorState()?.isOpen ? 'bg-green-400' : (getDoorState()?.isHalfway ? 'bg-amber-400' : 'bg-red-400'))"></span>
+                      <span class="font-black text-xs uppercase tracking-tight">
+                        {{ getDoorState()?.isOpen ? 'Fully Open' : (getDoorState()?.isHalfway ? 'Halfway' : 'Closed') }}
+                      </span>
+                    </div>
+                  </div>
+                  <div class="flex flex-col items-end">
+                    <span class="text-[9px] text-white/40 font-black uppercase mb-1">Security</span>
+                    <div class="flex items-center gap-2">
+                      <mat-icon class="text-xs w-4 h-4">{{ getDoorState()?.isLocked ? 'lock' : 'lock_open' }}</mat-icon>
+                      <span class="font-black text-xs uppercase tracking-tight" [class.text-red-400]="getDoorState()?.isLocked">
+                        {{ getDoorState()?.isLocked ? 'Locked' : 'Unlocked' }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Controls Grid -->
+                <div class="grid grid-cols-2 gap-2">
+                  <button (click)="toggleDoor('full')" [disabled]="getDoorState()?.isLocked" class="p-3 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all border border-white/10 hover:bg-white/10 disabled:opacity-30" [class.bg-white]="getDoorState()?.isOpen" [class.text-slate-900]="getDoorState()?.isOpen">Full Open</button>
+                  <button (click)="toggleDoor('half')" [disabled]="getDoorState()?.isLocked" class="p-3 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all border border-white/10 hover:bg-white/10 disabled:opacity-30" [class.bg-white]="getDoorState()?.isHalfway" [class.text-slate-900]="getDoorState()?.isHalfway">Halfway</button>
+                  <button (click)="toggleDoor('close')" class="p-3 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all border border-white/10 hover:bg-white/10" [class.bg-white]="!getDoorState()?.isOpen && !getDoorState()?.isHalfway" [class.text-slate-900]="!getDoorState()?.isOpen && !getDoorState()?.isHalfway">Close</button>
+                  <button (click)="toggleLock()" class="p-3 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all border border-white/10 hover:bg-white/10" [class.bg-red-500]="getDoorState()?.isLocked" [class.border-red-500]="getDoorState()?.isLocked">Lock</button>
+                </div>
+              </div>
+            </section>
+          }
+
+          <!-- Compact Issue Tables -->
+          <div class="space-y-8">
+            <!-- Tickets Table -->
+            <section>
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Active Tickets</h3>
+                <span class="px-2 py-0.5 bg-white/10 text-[#00CFFF] text-[9px] font-black rounded-full">{{ selectedHotspotTickets().length }}</span>
+              </div>
+              
+              @if (selectedHotspotTickets().length === 0) {
+                <div class="py-10 text-center border-2 border-dashed border-white/5 rounded-2xl">
+                  <p class="text-[10px] text-slate-500 font-black uppercase tracking-widest">No tickets raised</p>
+                </div>
+              } @else {
+                <div class="overflow-hidden border border-white/5 rounded-xl bg-black/20">
+                  <table class="w-full text-left text-[10px]">
+                    <thead class="bg-white/5 border-b border-white/5">
+                      <tr>
+                        <th class="px-3 py-2 font-black text-slate-400 uppercase tracking-tighter">ID</th>
+                        <th class="px-3 py-2 font-black text-slate-400 uppercase tracking-tighter">Description</th>
+                        <th class="px-3 py-2 font-black text-slate-400 uppercase tracking-tighter">Assigned</th>
+                        <th class="px-3 py-2 font-black text-slate-400 uppercase tracking-tighter text-right">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-white/5">
+                      @for (ticket of selectedHotspotTickets(); track ticket.id) {
+                        <tr class="hover:bg-white/5 transition-colors">
+                          <td class="px-3 py-3 font-black text-[#00CFFF]">{{ ticket.ticketNumber }}</td>
+                          <td class="px-3 py-3">
+                            <div class="flex flex-col gap-1">
+                              <span class="font-bold text-slate-200">{{ ticket.ticketDescription }}</span>
+                              <div class="flex gap-1">
+                                @if (ticket.safetyCritical) {
+                                  <span class="text-[7px] bg-red-500/20 text-red-400 px-1 rounded font-black uppercase">Safety</span>
+                                }
+                                @if (ticket.repeated) {
+                                  <span class="text-[7px] bg-amber-500/20 text-amber-400 px-1 rounded font-black uppercase">Repeater</span>
+                                }
+                              </div>
+                            </div>
+                          </td>
+                          <td class="px-3 py-3 text-slate-400 font-semibold">{{ ticket.assignedToName }}</td>
+                          <td class="px-3 py-3 text-right">
+                            <span class="px-1.5 py-0.5 bg-white/5 text-slate-300 rounded font-black uppercase text-[8px]">{{ ticket.statusTicketName }}</span>
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              }
+            </section>
+
+            <!-- Snags Table -->
+            <section>
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Latest Snags</h3>
+                <span class="px-2 py-0.5 bg-white/10 text-[#FFA500] text-[9px] font-black rounded-full">{{ selectedHotspotSnags().length }}</span>
+              </div>
+
+              @if (selectedHotspotSnags().length === 0) {
+                <div class="py-10 text-center border-2 border-dashed border-white/5 rounded-2xl">
+                  <p class="text-[10px] text-slate-500 font-black uppercase tracking-widest">No snags recorded</p>
+                </div>
+              } @else {
+                <div class="overflow-hidden border border-white/5 rounded-xl bg-black/20">
+                  <table class="w-full text-left text-[10px]">
+                    <thead class="bg-white/5 border-b border-white/5">
+                      <tr>
+                        <th class="px-3 py-2 font-black text-slate-400 uppercase tracking-tighter">ID</th>
+                        <th class="px-3 py-2 font-black text-slate-400 uppercase tracking-tighter">Category / Defect</th>
+                        <th class="px-3 py-2 font-black text-slate-400 uppercase tracking-tighter text-right">User</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-white/5">
+                      @for (snag of selectedHotspotSnags(); track snag.id) {
+                        <tr class="hover:bg-white/5 transition-colors">
+                          <td class="px-3 py-3 font-black text-[#FFA500]">{{ snag.snagNumber }}</td>
+                          <td class="px-3 py-3">
+                            <div class="flex flex-col gap-0.5">
+                              <span class="text-[8px] text-slate-500 font-black uppercase">{{ snag.finalInspectionCategoryName }}</span>
+                              <span class="font-bold text-slate-200 leading-tight">{{ snag.description }}</span>
+                            </div>
+                          </td>
+                          <td class="px-3 py-3 text-right text-slate-400 font-semibold">{{ snag.userName }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              }
+            </section>
+          </div>
+        </div>
+      } @else {
+        <div class="flex-1 flex flex-col items-center justify-center p-12 text-center">
+          <div class="w-24 h-24 bg-[#1A2E45] rounded-[2.5rem] flex items-center justify-center mb-8 border border-white/10 shadow-2xl relative group">
+            <div class="absolute inset-0 bg-[#00CFFF]/20 rounded-[2.5rem] blur-xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            <mat-icon class="text-[#00CFFF] text-5xl w-auto h-auto relative z-10">ads_click</mat-icon>
+          </div>
+          <h2 class="text-xl font-black text-white uppercase tracking-tight mb-3">Select Inspection Zone</h2>
+          <p class="text-xs text-slate-400 leading-relaxed font-bold uppercase tracking-widest max-w-[280px]">
+            Click on a 3D hotspot or choose from the left panel to access component-level inspection data.
+          </p>
+        </div>
+      }
+    </aside>
+  </main>
+
+  <!-- Modals -->
+  @if (showTicketModal()) {
+    <div class="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-[#071422]/80 backdrop-blur-sm">
+      <div class="w-full max-w-md bg-[#0D1B2A] rounded-3xl border border-white/10 shadow-2xl overflow-hidden">
+        <div class="bg-[#CC0000] p-6 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <mat-icon class="text-white">report_problem</mat-icon>
+            <h2 class="text-lg font-black text-white uppercase tracking-tight">Raise New Ticket</h2>
+          </div>
+          <button (click)="closeModals()" class="text-white/60 hover:text-white">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+        <div class="p-8 space-y-6">
+          <div class="space-y-2">
+            <label for="ticketDesc" class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Defect Description</label>
+            <textarea 
+              id="ticketDesc"
+              [(ngModel)]="ticketForm.description"
+              placeholder="Describe the issue in detail..."
+              class="w-full bg-black/20 border border-white/10 rounded-xl p-4 text-sm text-white focus:border-[#00CFFF] focus:outline-none min-h-[120px]"
+            ></textarea>
+          </div>
+          <div class="flex flex-col gap-4">
+            <label class="flex items-center gap-3 cursor-pointer group">
+              <input type="checkbox" [(ngModel)]="ticketForm.safetyCritical" class="hidden">
+              <div class="w-6 h-6 rounded-lg border-2 border-white/10 flex items-center justify-center transition-all" [class.bg-red-500]="ticketForm.safetyCritical" [class.border-red-500]="ticketForm.safetyCritical">
+                @if (ticketForm.safetyCritical) { <mat-icon class="text-white text-xs">check</mat-icon> }
+              </div>
+              <span class="text-xs font-bold text-slate-300 group-hover:text-white transition-colors">Safety Critical Issue</span>
+            </label>
+            <label class="flex items-center gap-3 cursor-pointer group">
+              <input type="checkbox" [(ngModel)]="ticketForm.repeated" class="hidden">
+              <div class="w-6 h-6 rounded-lg border-2 border-white/10 flex items-center justify-center transition-all" [class.bg-amber-500]="ticketForm.repeated" [class.border-amber-500]="ticketForm.repeated">
+                @if (ticketForm.repeated) { <mat-icon class="text-white text-xs">check</mat-icon> }
+              </div>
+              <span class="text-xs font-bold text-slate-300 group-hover:text-white transition-colors">Repeated Failure</span>
+            </label>
+          </div>
+          <div class="pt-4 flex gap-3">
+            <button (click)="closeModals()" class="flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:bg-white/5 transition-all">Cancel</button>
+            <button (click)="submitTicket()" [disabled]="!ticketForm.description" class="flex-1 bg-[#CC0000] text-white py-3 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg hover:bg-red-700 transition-all disabled:opacity-30">Submit Ticket</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (showSnagModal()) {
+    <div class="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-[#071422]/80 backdrop-blur-sm">
+      <div class="w-full max-w-md bg-[#0D1B2A] rounded-3xl border border-white/10 shadow-2xl overflow-hidden">
+        <div class="bg-[#1E3A5F] p-6 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <mat-icon class="text-white">note_add</mat-icon>
+            <h2 class="text-lg font-black text-white uppercase tracking-tight">Record Snag</h2>
+          </div>
+          <button (click)="closeModals()" class="text-white/60 hover:text-white">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+        <div class="p-8 space-y-6">
+          <div class="space-y-2">
+            <label for="snagDesc" class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Observation / Note</label>
+            <textarea 
+              id="snagDesc"
+              [(ngModel)]="snagForm.description"
+              placeholder="Enter observation details..."
+              class="w-full bg-black/20 border border-white/10 rounded-xl p-4 text-sm text-white focus:border-[#00CFFF] focus:outline-none min-h-[120px]"
+            ></textarea>
+          </div>
+          <div class="flex flex-col gap-4">
+            <label class="flex items-center gap-3 cursor-pointer group">
+              <input type="checkbox" [(ngModel)]="snagForm.safetyCritical" class="hidden">
+              <div class="w-6 h-6 rounded-lg border-2 border-white/10 flex items-center justify-center transition-all" [class.bg-red-500]="snagForm.safetyCritical" [class.border-red-500]="snagForm.safetyCritical">
+                @if (snagForm.safetyCritical) { <mat-icon class="text-white text-xs">check</mat-icon> }
+              </div>
+              <span class="text-xs font-bold text-slate-300 group-hover:text-white transition-colors">Safety Concern</span>
+            </label>
+          </div>
+          <div class="pt-4 flex gap-3">
+            <button (click)="closeModals()" class="flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:bg-white/5 transition-all">Cancel</button>
+            <button (click)="submitSnag()" [disabled]="!snagForm.description" class="flex-1 bg-[#00CFFF] text-[#071422] py-3 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg hover:bg-[#00BFFF] transition-all disabled:opacity-30">Record Snag</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+</div>

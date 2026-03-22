@@ -1,0 +1,5 @@
+{
+  "name": "BusPulse 3D Inspection",
+  "description": "A dedicated 3D bus inspection experience for fleet operations, allowing users to review tickets and snags on a 3D model.",
+  "requestFramePermissions": []
+}
